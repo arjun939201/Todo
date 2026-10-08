@@ -1,1 +1,440 @@
-# Todo
+# Todo App — Next.js + FastAPI + PostgreSQL
+
+A simple full-stack Todo application with separate Render services for the frontend and backend, plus a managed PostgreSQL database.
+
+## Architecture
+
+```text
+Next.js (Frontend)
+       │
+       │ HTTP / JSON
+       ▼
+FastAPI (Backend)
+       │
+       │ SQLAlchemy
+       ▼
+PostgreSQL
+```
+
+The browser calls FastAPI using `NEXT_PUBLIC_API_URL`. FastAPI connects to PostgreSQL using `DATABASE_URL` and permits the deployed frontend using `FRONTEND_URL`.
+
+## Features
+
+- Display all todos
+- Add a todo
+- Mark/unmark a todo as completed
+- Delete a todo
+- Loading state
+- Useful error messages
+- PostgreSQL persistence
+- SQLAlchemy ORM
+- FastAPI CORS configuration
+- Responsive desktop/mobile UI
+- Render Blueprint configuration
+
+## Project Structure
+
+```text
+todo-app/
+├── frontend/
+│   ├── src/
+│   │   └── app/
+│   │       ├── page.tsx
+│   │       ├── layout.tsx
+│   │       └── globals.css
+│   ├── public/
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── next-env.d.ts
+│   ├── next.config.ts
+│   ├── postcss.config.mjs
+│   ├── .env.example
+│   └── .gitignore
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── .env.example
+│   └── .gitignore
+├── render.yaml
+├── .gitignore
+├── README.md
+└── LICENSE
+```
+
+# LOCAL DEVELOPMENT
+
+## 1. PostgreSQL setup
+
+Install PostgreSQL locally and make sure the PostgreSQL server is running.
+
+Create the database:
+
+```sql
+CREATE DATABASE todo_db;
+```
+
+The example local connection string is:
+
+```text
+postgresql://postgres:password@localhost:5432/todo_db
+```
+
+Replace the username/password with your local PostgreSQL credentials.
+
+## 2. Backend environment variables
+
+Open a terminal in the project root:
+
+```bash
+cd backend
+```
+
+Create the local environment file.
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS/Linux:
+
+```bash
+cp .env.example .env
+```
+
+The file should contain:
+
+```env
+DATABASE_URL=postgresql://postgres:password@localhost:5432/todo_db
+FRONTEND_URL=http://localhost:3000
+```
+
+`.env` is ignored by Git. Never commit it.
+
+## 3. Create Python virtual environment
+
+From `backend/`:
+
+```bash
+python -m venv .venv
+```
+
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Windows Command Prompt:
+
+```cmd
+.venv\Scripts\activate
+```
+
+macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+## 4. Install backend dependencies
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+## 5. Run FastAPI
+
+The application loads the local `.env` file.
+
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Test these URLs:
+
+- http://localhost:8000/
+- http://localhost:8000/health
+- http://localhost:8000/docs
+
+## 6. Install frontend dependencies
+
+Open a second terminal:
+
+```bash
+cd frontend
+npm install
+```
+
+Create the local frontend environment file.
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+macOS/Linux:
+
+```bash
+cp .env.example .env.local
+```
+
+It should contain:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+## 7. Run Next.js
+
+```bash
+npm run dev
+```
+
+Open:
+
+http://localhost:3000
+
+The frontend sends requests to FastAPI, and FastAPI persists the todos in PostgreSQL.
+
+# GITHUB
+
+Create an empty GitHub repository, then from the `todo-app/` directory run:
+
+```bash
+git init
+git add .
+git commit -m "Initial Todo application"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
+git push -u origin main
+```
+
+Replace the remote URL with your actual GitHub repository URL.
+
+Before pushing, run:
+
+```bash
+git status
+```
+
+Confirm that `.env`, `.env.local`, `node_modules`, `.next`, `.venv`, `venv`, and `__pycache__` are not tracked.
+
+# RENDER DEPLOYMENT
+
+Render will run three resources:
+
+1. PostgreSQL database
+2. FastAPI backend web service
+3. Next.js frontend web service
+
+The included `render.yaml` defines all three and uses Render service/database references for the connection values. It does not contain database passwords or production URLs.
+
+## Option A — Recommended: Deploy from the Blueprint
+
+1. Push this repository to GitHub.
+2. In Render, choose **New → Blueprint**.
+3. Select the GitHub repository containing `todo-app`.
+4. Render reads `render.yaml`.
+5. Review the three resources:
+   - `todo-db`
+   - `todo-backend`
+   - `todo-frontend`
+6. Apply the Blueprint.
+7. Render creates the PostgreSQL database and the two web services.
+8. Render automatically provides the backend `DATABASE_URL` from the database connection string.
+9. Render automatically provides the backend `FRONTEND_URL` from the frontend service host.
+10. Render automatically provides the frontend `NEXT_PUBLIC_API_URL` from the backend service host.
+
+The exact Render service URLs are generated by Render; they are not hard-coded in this repository.
+
+## Option B — Create the services manually
+
+### 1. Create Render PostgreSQL
+
+1. Open Render.
+2. Choose **New → PostgreSQL**.
+3. Give the database a name such as `todo-db`.
+4. Choose the desired region/plan available to your account.
+5. Create the database.
+6. Copy/use the database's internal connection string when configuring the backend.
+7. Do not commit that connection string to GitHub.
+
+### 2. Deploy the FastAPI backend
+
+1. Choose **New → Web Service**.
+2. Connect the GitHub repository.
+3. Set the service root directory to:
+
+```text
+backend
+```
+
+4. Select the Python runtime.
+5. Set the build command:
+
+```bash
+pip install -r requirements.txt
+```
+
+6. Set the start command exactly:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+7. Add the backend environment variables:
+
+```text
+DATABASE_URL=<your Render PostgreSQL connection string>
+FRONTEND_URL=<your deployed frontend URL>
+```
+
+8. Deploy the backend.
+9. Test:
+
+```text
+https://YOUR_BACKEND_HOST/health
+```
+
+The backend should return a JSON health response showing that the database is connected.
+
+### 3. Deploy the Next.js frontend
+
+1. Choose **New → Web Service**.
+2. Connect the same GitHub repository.
+3. Set the service root directory to:
+
+```text
+frontend
+```
+
+4. Select the Node runtime.
+5. Set the build command:
+
+```bash
+npm install && npm run build
+```
+
+6. Set the start command:
+
+```bash
+npm run start
+```
+
+7. Add this environment variable:
+
+```text
+NEXT_PUBLIC_API_URL=<your deployed backend URL>
+```
+
+8. Deploy the frontend.
+
+### 4. Connect the three services
+
+The final connection must be:
+
+```text
+Next.js
+  │
+  │ NEXT_PUBLIC_API_URL
+  ▼
+FastAPI
+  │
+  │ DATABASE_URL
+  ▼
+PostgreSQL
+```
+
+And FastAPI must receive:
+
+```text
+FRONTEND_URL=<the exact deployed frontend origin>
+```
+
+For example, if Render gives your frontend a URL, use that complete HTTPS origin as `FRONTEND_URL`. Do not add a trailing slash.
+
+If you change a Render service URL, update the corresponding environment variable and redeploy the affected service.
+
+## CORS
+
+FastAPI reads `FRONTEND_URL` and allows that origin. Local development also permits:
+
+```text
+http://localhost:3000
+http://127.0.0.1:3000
+```
+
+Production should use the actual deployed frontend origin through `FRONTEND_URL`.
+
+## Database behavior
+
+This project uses PostgreSQL only.
+
+- No SQLite
+- No in-memory storage
+- SQLAlchemy ORM
+- PostgreSQL connection supplied through `DATABASE_URL`
+- SQLAlchemy connection health checking enabled
+- Tables are created at application startup
+
+For a larger production application, replace automatic table creation with a migration system such as Alembic.
+
+## API contract
+
+### GET `/`
+
+Returns basic API information.
+
+### GET `/health`
+
+Checks API/database availability.
+
+### GET `/todos`
+
+Returns todos ordered newest first.
+
+### POST `/todos`
+
+Request:
+
+```json
+{
+  "title": "Learn FastAPI"
+}
+```
+
+Returns HTTP `201 Created`.
+
+### PUT `/todos/{todo_id}`
+
+Mark complete:
+
+```json
+{
+  "completed": true
+}
+```
+
+Or update the title:
+
+```json
+{
+  "title": "Learn FastAPI deeply"
+}
+```
+
+### DELETE `/todos/{todo_id}`
+
+Deletes the requested todo and returns HTTP `204 No Content`.
+
+## Production notes
+
+- Keep all secrets in Render environment variables.
+- Never commit `.env` or `.env.local`.
+- Use HTTPS Render URLs in production.
+- Do not expose the PostgreSQL connection string to the frontend.
+- `NEXT_PUBLIC_API_URL` is intentionally public because it is used by browser code; it must contain only the API URL, never a secret.
